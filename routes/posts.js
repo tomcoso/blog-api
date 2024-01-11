@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const asyncHandler = require("express-async-handler");
-const Post = require("../models/posts");
-const Comment = require("../models/comments");
+const posts_controller = require("../controllers/postController");
+const comments_controller = require("../controllers/commentsController");
+
 const Admin = require("../models/admins");
 
 /* GET home page. */
@@ -17,44 +18,23 @@ router.use(
   })
 );
 
-router.get(
-  "/",
-  asyncHandler(async (req, res, next) => {
-    const posts = await Post.find({}).sort({ timestamp: -1 }).exec();
-    res.json({ data: posts });
-  })
-);
+router.get("/", posts_controller.posts_all_get);
 
-router.get(
-  "/:postid",
-  asyncHandler(async (req, res, next) => {
-    const [post, comments] = await Promise.all([
-      Post.findById(req.params.postid),
-      Comment.find({ post: req.params.postid }).exec(),
-    ]);
+router.get("/:postid", posts_controller.posts_one_get);
 
-    res.json({ data: { post: post, comments } });
-  })
-);
+router.post("/", posts_controller.posts_post);
 
-router.post(
-  "/",
-  asyncHandler(async (req, res, next) => {
-    try {
-      const post = new Post({
-        author: req.body.admin._id,
-        title: req.body.title,
-        text: req.body.text,
-        status: "unpublished",
-      });
-      await post.save();
-      res.json({ post });
-    } catch (err) {
-      console.error(err);
-      res.sendStatus(400);
-      return;
-    }
-  })
+router.put("/:postid", posts_controller.posts_update);
+
+router.delete("/:postid", posts_controller.posts_delete);
+
+// comments
+
+router.post("/:postid", comments_controller.comments_post);
+
+router.delete(
+  "/:postid/comments/:commentid",
+  comments_controller.comments_delete
 );
 
 module.exports = router;
