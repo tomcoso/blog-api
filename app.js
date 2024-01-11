@@ -5,6 +5,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 const postsRouter = require("./routes/posts");
+const authController = require("./routes/auth");
 
 require("dotenv").config({ path: `./config/.env.${process.env.NODE_ENV}` });
 
@@ -19,6 +20,11 @@ async function main() {
 }
 main().catch((err) => console.error(err));
 
+// Auth
+const passport = require("passport");
+const jwtStrategy = require("./strategies/jwt");
+passport.use(jwtStrategy);
+
 // MIDDLEWARE
 app.use(cors());
 app.use(logger("dev"));
@@ -28,6 +34,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ROUTES
 app.use("/posts", postsRouter);
+app.use("/auth", authController);
 
 app.use((req, res, next) => {
   res.sendStatus(404);

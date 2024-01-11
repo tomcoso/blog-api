@@ -1,4 +1,5 @@
 const asyncHandler = require("express-async-handler");
+const passport = require("passport");
 
 const Post = require("../models/posts");
 const Comment = require("../models/comments");
@@ -18,22 +19,24 @@ exports.posts_one_get = asyncHandler(async (req, res, next) => {
   res.json({ data: { post: post, comments } });
 });
 
-exports.posts_post = asyncHandler(async (req, res, next) => {
-  try {
-    const post = new Post({
-      author: req.body.admin._id,
-      title: req.body.title,
-      text: req.body.text,
-      status: "unpublished",
-    });
-    await post.save();
-    res.json({ post });
-  } catch (err) {
-    console.error(err);
-    res.sendStatus(400);
-    return;
-  }
-});
+exports.posts_post = [
+  passport.authenticate("jwt", { session: false }),
+  asyncHandler(async (req, res, next) => {
+    try {
+      const post = new Post({
+        author: req.body.admin._id,
+        title: req.body.title,
+        text: req.body.text,
+        status: "unpublished",
+      });
+      await post.save();
+      return res.json({ post });
+    } catch (err) {
+      console.error(err);
+      return res.sendStatus(400);
+    }
+  }),
+];
 
 exports.posts_update = asyncHandler(async (req, res, next) => {});
 
