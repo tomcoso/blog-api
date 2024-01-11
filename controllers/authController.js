@@ -27,8 +27,6 @@ exports.auth_login = asyncHandler(async (req, res, next) => {
   return res.status(200).json({ message: "Auth passed", token });
 });
 
-exports.auth_logout = asyncHandler(async (req, res, next) => {});
-
 exports.auth_signup = asyncHandler(async (req, res, next) => {
   try {
     bcrypt.hash(req.body.password, 10, async (err, hashedPassword) => {
