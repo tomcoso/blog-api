@@ -41,7 +41,23 @@ exports.posts_post = [
 
 exports.posts_update = [
   passport.authenticate("jwt", { session: false }),
-  asyncHandler(async (req, res, next) => {}),
+  asyncHandler(async (req, res, next) => {
+    if (!["title", "text", "status"].includes(req.body.key)) {
+      return res
+        .status(400)
+        .json({ message: "Only accept keys: 'title', 'text', 'status'." });
+    }
+
+    const post = await Post.findByIdAndUpdate(
+      req.params.postid,
+      {
+        [req.body.key]: req.body.update,
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({ post });
+  }),
 ];
 
 exports.posts_delete = [
