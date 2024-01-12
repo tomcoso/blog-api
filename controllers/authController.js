@@ -1,5 +1,6 @@
 const Admin = require("../models/admins");
-const debug = require("debug")("blog-api:auth");
+const debug = require("debug")("app:auth");
+const StandardError = require("../errors/standardError");
 
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
@@ -11,15 +12,13 @@ exports.auth_login = asyncHandler(async (req, res, next) => {
 
   const user = await Admin.findOne({ email }).exec();
   if (!user) {
-    res.status(400).json({ message: "No user found" });
-    return;
+    return next(new StandardError("No user found", { email }, 400));
   }
   debug(user);
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
-    res.status(403).json({ message: "Incorrect password" });
-    return;
+    return next(new StandardError("Incorrect password", { email }, 400));
   }
 
   const secret = process.env.SECRET_JWT_KEY;
@@ -31,7 +30,7 @@ exports.auth_signup = asyncHandler(async (req, res, next) => {
   try {
     bcrypt.hash(req.body.password, 10, async (err, hashedPassword) => {
       if (err) {
-        throw new Error("Error hashing password");
+        return next(new StandardError("Error hashing password", err));
       }
       const user = new Admin({
         username: req.body.username,
@@ -43,6 +42,6 @@ exports.auth_signup = asyncHandler(async (req, res, next) => {
 
     return res.status(201).json({ user });
   } catch (err) {
-    return res.status(400).json({ message: err.message });
+    return next(new StandardError("Internal database error", err, 503));
   }
 });

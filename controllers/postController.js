@@ -1,24 +1,37 @@
 const asyncHandler = require("express-async-handler");
 const passport = require("passport");
-const debug = require("debug")("blog-api:posts");
+const debug = require("debug")("app:posts");
 const { body, validationResult } = require("express-validator");
 
 const Post = require("../models/posts");
 const Comment = require("../models/comments");
-const Admin = require("../models/admins");
+const StandardError = require("../errors/standardError");
 
 exports.posts_all_get = asyncHandler(async (req, res, next) => {
-  const posts = await Post.find({}).sort({ timestamp: -1 }).exec();
-  res.json({ data: posts });
+  try {
+    const posts = await Post.find({}).sort({ timestamp: -1 }).exec();
+    return res.status(200).json({ data: posts });
+  } catch (err) {
+    return next(new StandardError("Internal database error", err, 503));
+  }
 });
 
 exports.posts_one_get = asyncHandler(async (req, res, next) => {
-  const [post, comments] = await Promise.all([
-    Post.findById(req.params.postid),
-    Comment.find({ post: req.params.postid }).exec(),
-  ]);
+  try {
+    const [post, comments] = await Promise.all([
+      Post.findById(req.params.postid),
+      Comment.find({ post: req.params.postid }).exec(),
+    ]);
+    if (!post) {
+      return next(
+        new StandardError("No post found with given post ID", err, 404)
+      );
+    }
 
-  res.json({ data: { post: post, comments } });
+    return res.status(200).json({ data: { post: post, comments } });
+  } catch (err) {
+    return next(new StandardError("Internal database error", err, 503));
+  }
 });
 
 exports.posts_post = [
@@ -36,7 +49,7 @@ exports.posts_post = [
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return next(new StandardError("Validation error", errors.array(), 400));
     }
 
     try {
@@ -47,10 +60,9 @@ exports.posts_post = [
         status: "unpublished",
       });
       await post.save();
-      return res.json({ post });
+      return res.status(200).json({ post });
     } catch (err) {
-      console.error(err);
-      return res.sendStatus(400);
+      return next(new StandardError("Internal database error", err, 503));
     }
   }),
 ];
@@ -93,19 +105,29 @@ exports.posts_update = [
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return next(new StandardError("Validation Error", errors.array(), 400));
     }
 
-    const post = await Post.findByIdAndUpdate(
-      req.params.postid,
-      {
-        [req.body.key]: req.body.update,
-      },
-      { new: true }
-    );
+    try {
+      const post = await Post.findByIdAndUpdate(
+        req.params.postid,
+        {
+          [req.body.key]: req.body.update,
+        },
+        { new: true }
+      );
 
-    if (post === null) {
-      return res.status(400).json({ message: "post does not exist" });
+      if (post === null) {
+        return next(
+          new StandardError(
+            "No post found with provided ID",
+            { id: req.params.postid },
+            404
+          )
+        );
+      }
+    } catch (err) {
+      return next(new StandardError("Internal database error", err, 503));
     }
 
     return res.status(200).json({ post });
@@ -117,13 +139,22 @@ exports.posts_delete = [
   asyncHandler(async (req, res, next) => {
     try {
       const post = await Post.findByIdAndDelete(req.params.postid);
+      if (!post) {
+        return next(
+          new StandardError(
+            "No post found with provided ID",
+            { id: req.params.postid },
+            404
+          )
+        );
+      }
       debug(post);
       const count = await Comment.deleteMany({ post: post._id });
       return res
         .status(200)
         .json({ post, comments_deleted: count.deletedCount });
     } catch (err) {
-      return res.sendStatus(400);
+      return next(new StandardError("Internal database error", err, 503));
     }
   }),
 ];
