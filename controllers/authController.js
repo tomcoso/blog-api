@@ -27,6 +27,9 @@ exports.auth_login = asyncHandler(async (req, res, next) => {
 });
 
 exports.auth_signup = asyncHandler(async (req, res, next) => {
+  if (!req.body.secret || req.body.secret !== process.env.NEW_ADMIN_SECRET) {
+    return next(new StandardError("Unauthorized to create new admin", {}, 401));
+  }
   try {
     bcrypt.hash(req.body.password, 10, async (err, hashedPassword) => {
       if (err) {

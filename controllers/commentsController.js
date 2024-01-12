@@ -15,7 +15,7 @@ exports.comments_post = [
     .escape(),
   body("text")
     .trim()
-    .isLength({ min: 1 })
+    .isLength({ min: 1, max: 500 })
     .withMessage("text must not be empty or undefined")
     .escape(),
   asyncHandler(async (req, res, next) => {
