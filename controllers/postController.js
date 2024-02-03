@@ -69,39 +69,22 @@ exports.posts_post = [
 
 exports.posts_update = [
   passport.authenticate("jwt", { session: false }),
-  body("key")
+  body()
     .custom((value) => {
-      return ["title", "text", "status"].includes(value);
+      const requiredFields = [
+        "_id",
+        "text",
+        "title",
+        "status",
+        "timestamp",
+        "author",
+      ];
+      const isValid = requiredFields.every((field) =>
+        Object.keys(value).includes(field)
+      );
+      return isValid;
     })
-    .withMessage("Only accept keys: 'title', 'text', 'status'.")
-    .escape(),
-  body("update")
-    .custom((value, { req }) => {
-      if (req.body.key !== "status") return true;
-      return value === "published" || value === "unpublished";
-    })
-    .withMessage("status must be either 'published' or 'unpublished'")
-    .custom((value, { req }) => {
-      if (
-        req.body.key === "title" &&
-        (value.length < 10 || value.length > 100)
-      ) {
-        throw new Error("title must be between 10 and 100 characters");
-      } else if (
-        req.body.key === "text" &&
-        (value.length < 10 || value.length > 2000)
-      ) {
-        throw new Error("text must be between 10 and 2000 characters");
-      } else if (
-        req.body.key === "status" &&
-        value !== "published" &&
-        value !== "unpublished"
-      ) {
-        throw new Error("status must be either 'published' or 'unpublished'");
-      }
-      return true;
-    })
-    .escape(),
+    .withMessage("incorrect body type"),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -109,13 +92,9 @@ exports.posts_update = [
     }
 
     try {
-      const post = await Post.findByIdAndUpdate(
-        req.params.postid,
-        {
-          [req.body.key]: req.body.update,
-        },
-        { new: true }
-      );
+      const post = await Post.findByIdAndUpdate(req.params.postid, req.body, {
+        new: true,
+      });
 
       if (post === null) {
         return next(
@@ -126,11 +105,10 @@ exports.posts_update = [
           )
         );
       }
+      return res.status(200).json({ post });
     } catch (err) {
       return next(new StandardError("Internal database error", err, 503));
     }
-
-    return res.status(200).json({ post });
   }),
 ];
 
