@@ -5,6 +5,7 @@ const StandardError = require("../errors/standardError");
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const DateTime = require("luxon").DateTime;
 require("dotenv").config();
 
 exports.auth_login = asyncHandler(async (req, res, next) => {
@@ -23,7 +24,8 @@ exports.auth_login = asyncHandler(async (req, res, next) => {
 
   const secret = process.env.SECRET_JWT_KEY;
   const token = jwt.sign({ email }, secret, { expiresIn: "12h" });
-  return res.status(200).json({ message: "Auth passed", token });
+  const expDate = DateTime.now().plus({ hours: 12 }).toMillis().toString();
+  return res.status(200).json({ message: "Auth passed", token, expDate });
 });
 
 exports.auth_signup = asyncHandler(async (req, res, next) => {
